@@ -1,0 +1,949 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dialogtree SYSTEM "dialogtree.dtd">
+<dialogtree>
+  <branch destinationname="organ">
+    <userquestion>
+        Hi! I can help you find a transplant center. Please tell me what organ you are looking for? 
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this: 
+          <response/> 
+
+        to this question:
+          <backprompt/> 
+
+        that you can only provide information about centers that transplants Heart, Kidney, Liver and Lung.
+    </errorprompt>
+    <answerparse>
+        Did the person who answered this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        Tell me which kind of organ the user is seeking? 
+        if that organ is 'heart' reply 'heart', if it is 'kidney' reply 'kidney', if it is 'liver' reply 'liver', if it is 'lung' reply 'lung', otherwise reply "other". Say only one word.
+        Say only one word.
+    </answerparse>
+    <jump answer="liver kidney heart lung">
+      <![CDATA[
+      context["skip_donor_type"] = False
+      context['print_flag'] = False
+      context['candidate_insurance_provider'] = ''
+      context['candidate_age'] = ''
+      context['BMI'] = ''
+      context['is_candidate_hiv_positive'] = ''
+      context['is_candidate_hepatitis_c_positive'] = ''
+      context['is_candidate_diabetic'] = ''
+      context['response_json'] = ''
+      context['donor_type'] = 'deceased'
+
+      if answer=="heart":
+          context["organ_choice"] = answer
+          context["skip_donor_type"] = True
+          context["candidate_organ_disease_cause_choices"] = "1. Heart valve disease 2. Congenital disease 3. Cardiomyopathy 4. Coronary Artery disease 5. Other 6. Don't know"
+          context['heart_choices'] = {1:'heartValveDisease', 2:'congenitalDisease', 3: 'cardiomyopathy', 4: 'coronaryArteryDisease', 5: 'other', 6: 'dontKnow'}
+          return "search_type"
+      elif answer == "kidney":
+          context["organ_choice"] = answer
+          context["candidate_organ_disease_cause_choices"] = "1. Diabetes 2. Hypertension 3. Polycystic kidney disease 4. Glomerular disease 5. Not mentioned 6. Don't know"
+          context['kidney_choices'] = {1:'diabetes', 2:'hypertension', 3: 'polycysticKidneyDisease', 4: 'glomerularDisease', 5: 'other', 6: 'notsure'}
+          return "donor_types"
+      elif answer == "lung":
+          context["organ_choice"] = answer
+          context["skip_donor_type"] = True
+          context["candidate_organ_disease_cause_choices"] = "1. Chronic Obstructive Pulmonary disease (COPD) or emphysema 2. Cystic fibrosis or bronchiectasis 3. Interstitial lung disease, idiopathic pulmonary fibrosis or another type of pulmonary fibrosis 4. Pulmonary hypertension (not due to any of the conditions above) 5. Not mentioned 6. Don't know"
+          context['lung_choices'] = {1: 'copd', 2:'cysticFibrosis', 3: 'interstitialLungDisease', 4: 'pulmonaryHypertension', 5: 'other', 6: 'dontKnow'}
+          return "search_type"
+      elif answer == "liver":
+          context["organ_choice"] = answer
+          context["candidate_organ_disease_cause_choices"] = "1. Acute liver failure 2. Alcoholic liver disease 3. Cholestatic liver disease 4. Hepatitis-B 5. Hepatitis-C 6. Liver Cancer 7. Not mentioned 8. Don't know"
+          context['liver_choices'] = {1:'acuteLiverFailure', 2:'alcoholicLiverDisease', 3: 'cholestaticLiverDisease', 4: 'hepatitisB', 5: 'hepatitisC', 6: 'liverCancer', 7:'other', 8: 'dontKnow'}
+          return "donor_types"
+      print("Your choice is: " + context["organ_choice"])
+      ]]>
+    </jump>
+  </branch>
+
+    <branch destinationname="search_type">
+    <userquestion>
+    Do you want to search by State or by distance from your current location?
+    </userquestion>
+    <errorprompt>
+      Explain to the user who just replied with this:
+        <response/>
+
+      to this question:
+        <backprompt/>
+
+      that you would like the user's answer to mention whether they want to search by distance from their current location or by State.
+    </errorprompt>
+    <answerparse>
+      You asked the user this:
+
+      <backprompt/>
+
+      And the user replied with this:
+
+      <response/>
+
+      if the user's response mentions that they want to search by State then reply "state". If the user mentioned that they want to search by distance from their current location then reply "distance". If you can't tell reply "other". Say only one word.
+    </answerparse>
+    <jump answer="state distance">
+      <![CDATA[
+      
+      context['ask_path'] = False
+      
+
+      if context["organ_choice"] in ['kidney', 'liver']:
+        context["skip_donor_type"] = False
+
+      if answer == "state":
+          context["search_radius"] = ""
+          context["zipcode"] = ""
+          return "state"
+      elif answer == "distance":
+          context["state"] = ""
+          return "zipcode"
+      ]]>
+</jump>
+  </branch>
+
+  <branch destinationname="search_radius">
+    <userquestion>
+    What distance are you comfortable covering in your search?
+    Note: Waiting time varies by region. A larger area gives you more choices.
+    </userquestion>
+    <errorprompt>
+      Explain to the user who just replied with this:
+        <response/>
+
+      to this question:
+        <backprompt/>
+
+      that you would like the answer to the preceding question regarding how much distance the user is comfortable covering in their search either as '50 miles' or '100 miles' or '250 miles' or '500 miles' or '700 miles'.
+    </errorprompt>
+    <answerparse>
+      You asked the user this:
+
+      <backprompt/>
+
+      And the user replied with this:
+
+      <response/>
+
+      Tell me how much distance in miles in numerical format the user is comfortable covering in their search. If you can't tell reply "other". Say only one word.
+    </answerparse>
+    <jump accept="extract_search_radius post_to_transplant_center_search">
+      <![CDATA[
+
+      if context["response_json"] == []:
+        print("Sorry, we currently don't have any centers matching your search criteria. Do you want to try considering other State/Distance in your search?")
+        return "reroute_search_type"
+      else:
+        return "decision_guide1"
+      
+      
+      if context['ask_path']:
+        return "search_type"
+
+
+
+      ]]>
+    </jump>
+  </branch>
+
+  <state destinationname="reroute_search_type" nextdestination="search_type">
+    "Sorry, we currently don't have any centers matching your search criteria. Do you want to try considering other State/Distance in your search?"
+  </state>
+
+  <branch destinationname="zipcode">
+    <userquestion>
+    What is your zipcode?
+    </userquestion>
+    <errorprompt>
+      Explain to the user who just replied with this:
+        <response/>
+
+      to this question:
+        <backprompt/>
+
+      that you would like the zipcode for the user's current location in the United States of America.
+    </errorprompt>
+    <answerparse>
+      You asked the user this:
+
+      <backprompt/>
+
+      And the user replied with this:
+
+      <response/>
+
+      <!-- Recall the user's 5-digit ZIP code response devoid of letters, ensuring it strictly adheres to the numerical format. If unable to determine, reply 'other.' Provide only one-word responses. -->
+      Tell me the 5 digits ZIP code the user replied. If it is not in numerical format reply "other". Say only one word
+      For example if the user's response is "55414" reply "55414" and if the reply is not in numerical format reply "other".
+
+    </answerparse>
+    <jump accept="extract_zipcode" nextdestination="search_radius">
+      <![CDATA[
+        
+      ]]>
+    </jump>
+  </branch>
+
+
+
+  <branch destinationname="state">
+    <userquestion>
+    Which state are you currently residing in?
+    </userquestion>
+    <errorprompt>
+      Explain to the user who just replied with this:
+        <response/>
+
+      to this question:
+        <backprompt/>
+
+      that you would like the answer to be one of the states of the United States of America.
+    </errorprompt>
+    <answerparse>
+      You asked the user this:
+
+      <backprompt/>
+
+      And the user replied with this:
+
+      <response/>
+
+      Tell me which state the user said is currently residing within the United States of America. If you can't tell reply "other". Say only one word.
+    </answerparse>
+    <jump accept="map_state post_to_transplant_center_search">
+      <![CDATA[
+
+      if context["response_json"] == []:
+        print("Sorry, we currently don't have any centers matching your search criteria. Do you want to try considering other State/Distance in your search?")
+        return "reroute_search_type"
+      else:
+        return "decision_guide1"
+
+      if context['ask_path']:
+        return "search_type"
+      
+      
+
+      
+
+      ]]>
+    </jump>
+  </branch>
+
+
+  <branch destinationname="donor_types">
+    <userquestion>
+        What kind of donor are you looking for?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the user's answer for donor type they are seaching as either "living donor", "deceased donor" or "pursuing both".
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me which kind of donor the user is seeking? 
+        if it is a "living donor" reply "living", if it is a "deceased donor" reply "deceased", if it is "pursuing both" reply "both", otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump accept="get_donor_type" nextdestination="search_type">
+      <![CDATA[
+      
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="decision_guide1">
+    <userquestion>
+        Pause for a minute and carefully look at the decision guide formed based on your inputs and then feel free to continue to the next page by typing 'yes' or 'no'
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the user's answer to be either 'yes' or 'no'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me what the user replied, if yes reply 'yes' if no reply 'no' otherwise reply 'other'. Say only one word.
+    </answerparse>
+    <jump answer="yes no">
+      <![CDATA[
+      if answer == 'yes':
+        return "candidate_age"
+      elif answer == 'no':
+        return "end"
+      else:
+        return None
+
+      ]]>
+    </jump>
+  </branch>
+
+<branch destinationname="candidate_age">
+    <userquestion>
+        Note: Enter your medical profile. This will be used for your personalized decision guide. The information you give will impact your choices for a transplant center.
+        What's your age?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the input to be user's age in the range of 0 to 150.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me what is the age of the user? 
+        if users age is in between the range of 1 to 150 then get me its integer format only (for example: 32) and not in verbal form, otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump accept="validate_user_age" nextdestination="candidate_height">
+      <![CDATA[
+      context['print_flag'] = True
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="candidate_height">
+    <userquestion>
+        What's your height in feet and inches?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the input to be user's height which should be in the range of "1ft 0inch" to "8ft 11inches".
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Provide the user's height in feet and inches format. If the feet part of the user's height is between 1 and 8 (inclusive) and the inches part is between 0 and 11 (inclusive), format it as 'feet' 'inches' (e.g., 5' 10"). Otherwise, reply with 'other'. Provide only one word.
+</answerparse>
+
+    <jump accept="validate_candidate_height" nextdestination="candidate_weight">
+      <![CDATA[
+      
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="candidate_weight">
+    <userquestion>
+        What's your weight in lbs?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the input to be user's weight.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me what is the weight of the user in lbs? 
+        if the user's weight is in the range of 1 to 1000 lbs reply it in a numerical format, otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump accept="validate_candidate_weight calculate_BMI">
+      <![CDATA[
+      if(context['organ_choice'] == 'kidney'):
+        return "candidate_blood_type"
+      else:
+        return "candidate_disease_cause" 
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="candidate_blood_type">
+    <userquestion>
+        What's your blood type?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the input to be user's blood type which should be one of the following: A, B, AB or O and if you are not sure then type 'not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me what is the user's blood type? 
+        if user's blood type is 'A' then reply 'A', if 'B' then reply 'B',  if 'AB' then reply 'AB', if 'O' then reply 'O', and if 'not sure' then reply 'notsure', otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump accept="get_blood_type" nextdestination="candidate_disease_cause">
+      <![CDATA[
+        
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="candidate_disease_cause">
+    <userquestion>
+        What's the cause of <context key="organ_choice"/> disease?
+        Choose the cause from the below:
+        <context key="candidate_organ_disease_cause_choices"/>
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the input to be the cause of user's <context key="organ_choice"/> disease, which should be one of the following disease: <context key="candidate_organ_disease_cause_choices"/>.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me what is the user's disease cause? 
+        if user's cause of disease is in <context key="candidate_organ_disease_cause_choices"/> then reply with the respective disease option number associated with the disease cause, otherwise reply "other". Say only one word.
+        For example: if the options are 1. Cough 2. Cold, when the user replies as Cough, then give me the output as 1.
+    </answerparse>
+    <jump accept="get_disease_cause">
+      <![CDATA[
+      if context['organ_choice'] == 'heart':
+        return 'is_diabetic'
+      else:
+        return 'insurance_provider'
+      
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_diabetic">
+    <userquestion>
+        Are you diabetic?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Yes', 'No' or 'Not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is diabetic? 
+        If the answer is yes, reply 'yes'; if the answer is 'not sure' or 'uncertain', then reply 'yes'; if the answer is no, reply 'no';  otherwise, reply 'other'. Say only one word.
+    </answerparse>
+    <jump answer="yes no not-sure" nextdestination="insurance_provider">
+      <![CDATA[
+        if answer in ['yes', 'no']:
+          context['is_candidate_diabetic'] = answer
+        
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="insurance_provider">
+    <userquestion>
+        Select your insurance provider?
+        1. Non-medicaid (Medicare, Private, Military)
+        2. Medicaid (as primary insurance)
+        3. No Insurance 
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Non-medicaid', 'Medicaid' or 'No Insurance'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is diabetic? 
+        if the answer is non medicaid then reply 'non-medicaid', if the answer is medicaid then reply 'medicaid', if the answer is similar to no insurance then reply 'no-insurance' , otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump answer="non-medicaid medicaid no-insurance" nextdestination="is_hiv_positive">
+      <![CDATA[
+        print(f"Selected: {answer}")
+        if answer in ['non-medicaid', 'medicaid']:
+          context['candidate_insurance_provider'] = answer
+          if context['candidate_insurance_provider'] == 'medicaid':
+            print("Note: Some centers may require additional insurance for patients with only Medicaid.")
+        elif answer == 'no-insurance':
+          context['candidate_insurance_provider'] = 'none'
+        else:
+          return None
+
+        
+        
+      ]]>
+    </jump>
+  </branch>
+  
+  <branch destinationname="is_hiv_positive">
+    <userquestion>
+        Are you HIV Positive?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Yes' or 'No' or 'Not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is HIV Positive? 
+        If the answer is yes, reply 'yes'; if the answer is 'not sure' or 'uncertain', reply 'yes'; if the answer is no, reply 'no';  otherwise, reply 'other'. Say only one word.
+    </answerparse>
+    <jump answer="yes no not-sure">
+      <![CDATA[
+        if answer in ['yes', 'no']:
+          context['is_candidate_hiv_positive'] = answer
+          if answer == 'yes':
+            print("Note: Currently, centers must have approval through the HOPE Act to perform transplants with HIV positive organs for HIV positive recipients.")
+        elif answer == 'not-sure':
+          context['is_candidate_hiv_positive'] = 'notSure'
+
+        if context['organ_choice'] in ['liver', 'kidney']:
+          return 'is_hepatitis_b_positive'
+        else:
+          return 'is_hepatitis_c_positive'
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_hepatitis_b_positive">
+    <userquestion>
+        Are you Hepatitis-B Positive?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Yes', 'No' or 'Not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is Hepatitis-B Positive? 
+        If the answer is yes, reply 'yes'; if the answer is 'not sure' or 'uncertain', reply 'yes'; if the answer is no, reply 'no';  otherwise, reply 'other'. Say only one word.
+    </answerparse>
+    <jump answer="yes no not-sure" nextdestination="is_hepatitis_c_positive">
+      <![CDATA[
+        if answer in ['yes', 'no']:
+          context['is_candidate_hepatitis_b_positive'] = answer
+          if answer == 'yes' and context['organ_choice'] in ['kidney','liver']:
+            print("Note: Some centers have special programs to treat Hepatitis B patients who receive an organ transplant.")
+        elif answer == 'not-sure':
+          context['is_candidate_hepatitis_b_positive'] = 'notSure'
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_hepatitis_c_positive">
+    <userquestion>
+        Are you Hepatitis-C Positive?
+        Note: Choose from the below options
+        1. No 2. Yes (Treated) 3. Yes (Active) 4. Not Sure
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Yes-Treated', 'Yes-Active', 'No' or 'Not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is Hepatitis-C Positive? 
+        if the answer is yes and treated then reply 'yes_treated'; if the answer is yes and active then reply 'yes_active'; if the answer is 'not sure' or 'uncertain' then reply 'yes_active'; if the answer is no then reply 'no'(Note this is different from not sure or uncertain); otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump answer="yes_treated yes_active no not-sure">
+      <![CDATA[
+        if answer in ['yes_treated', 'yes_active', 'no']:
+          context['is_candidate_hepatitis_c_positive'] = answer
+          if answer != 'no':
+            print("Note: Some centers have special programs to treat Hepatitis C patients who receive an organ transplant.")
+        elif answer == 'not-sure':
+          context['is_candidate_hepatitis_c_positive'] = 'notSure'
+
+        if context['organ_choice']  == 'kidney':
+          return 'is_multiorgan_candidate_kidney'
+        else:
+          return 'is_candidate_had_previous_organ_transplant'
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_candidate_had_previous_organ_transplant">
+    <userquestion>
+        Did you have any <context key='organ_choice'/> transplants before?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Yes' or 'No'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user had any previous <context key='organ_choice'/> transplants before? 
+        if the answer is yes then reply 'yes', if the answer is no then reply 'no', otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump answer="yes no">
+      <![CDATA[
+        if answer in ['yes', 'no']:
+          context['is_candidate_had_previous_organ_transplant'] = answer
+          if answer == 'yes':
+            print(f"Note: Some centers have more experience with conducting repeat {context['organ_choice']} transplants.")
+        
+
+        if context['organ_choice']  == 'heart':
+          return 'is_candidate_had_organ_surgery_before'
+        elif context['organ_choice'] == 'liver':
+          return 'is_multiorgan_candidate_liver'
+        elif context['organ_choice'] == 'kidney':
+          return 'is_multiorgan_candidate_kidney'
+        else:
+          return 'is_multiorgan_candidate'
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_candidate_had_organ_surgery_before">
+    <userquestion>
+        Did you have any <context key='organ_choice'/> surgery before (Not Transplant)?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Yes' or 'No'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user had any previous <context key='organ_choice'/> surgeries before? 
+        if the answer is yes then reply 'yes', if the answer is no then reply 'no', otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump answer="yes no">
+      <![CDATA[
+        if answer in ['yes', 'no']:
+          context['is_candidate_had_organ_surgery_before'] = answer
+          if context['organ_choice'] == 'heart' and answer == 'yes':
+            print("Note: Some centers have more experience with conducting heart transplants in patients with previous non-transplant heart surgeries.")
+
+        
+
+        if context['organ_choice'] == 'liver':
+          return 'is_multiorgan_candidate_liver'
+        elif context['organ_choice'] == 'kidney':
+          return 'is_multiorgan_candidate_kidney'
+        else:
+          return 'is_multiorgan_candidate' 
+        
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_multiorgan_candidate">
+    <userquestion>
+        Are you a Multi-organ Candiate?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'yes' or 'no' or 'not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is a Multi-organ Candiate? 
+        if the answer is yes and other then reply 'yes', if not sure or uncertain then reply 'yes', if no then reply 'no' (Note this is different from not sure or uncertain), otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump accept="get_is_multiorgan_candidate" nextdestination="decision_guide2">
+      <![CDATA[
+        
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_multiorgan_candidate_kidney">
+    <userquestion>
+        Are you a Multi-organ Candiate?
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'yes and SPK' or 'yes and other' or 'no' or 'not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is a Multi-organ Candiate? 
+        if the answer is yes and other then reply 'yes_other', if (yes and SPK) or (yes and simultaneous pancreas kidney (SPK)) then reply 'yes_spk', if the answer is 'not sure' or 'uncertain' then reply 'notSure', if no then reply 'no' (Note this is different from not sure or uncertain), otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump accept="get_is_multiorgan_candidate" nextdestination="decision_guide2">
+      <![CDATA[
+        
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="is_multiorgan_candidate_liver">
+    <userquestion>
+        Are you a Multi-organ Candiate?
+        Note: Select the options from below
+        1.Yes (Liver-Kidney) 2. Yes (Other), 3.'No' 4.'Not sure'
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the answer as either 'Yes (Liver-Kidney)', 'Yes (Other)', 'No' or 'Not sure'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me whether the user is a Multi-organ Candiate? 
+        if the answer is yes and liver kidney then reply 'yes_liver_kidney', if yes and other then reply 'yes_other', if the answer is 'not sure' or 'uncertain' then reply 'notSure', if the answer is no then reply 'no',  otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump accept="get_is_multiorgan_candidate" nextdestination="decision_guide2">
+      <![CDATA[
+        
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="decision_guide2">
+    <userquestion>
+        Pause for a minute and carefully look at the decision guide formed based on your inputs and then feel free to continue to the next page by typing 'yes' or 'no'
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the user's answer to be either 'yes' or 'no'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me what the user replied, if 'yes' reply 'yes' if 'no' reply 'no' otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump answer="yes no">
+      <![CDATA[
+      if answer == 'yes':
+        return "result_page"
+      elif answer == 'no':
+        return "end"
+      else:
+        return None
+
+      ]]>
+    </jump>
+  </branch>
+
+  <branch destinationname="result_page">
+    <userquestion>
+        That's it you can find the center names by selecting different criteria from the highlighted dropdown menu. If you want to exit type 'yes' or else type 'no'
+    </userquestion>
+    <errorprompt>
+        Explain to the user who just replied with this:
+          <response/>
+
+        to this question:
+          <backprompt/>
+
+        that you were expecting the user's answer to be either 'yes' or 'no'.
+    </errorprompt>
+    <answerparse>
+        You asked the user this:
+
+        <backprompt/>
+
+        And they replied with this:
+
+        <response/>
+
+        Tell me what the user replied, if 'yes' reply 'yes' if 'no' reply 'no' otherwise reply "other". Say only one word.
+    </answerparse>
+    <jump answer="yes no">
+      <![CDATA[
+      if answer == 'yes':
+        return "end"
+      elif answer == 'no':
+        return "result_page"
+      else:
+        return None
+
+      ]]>
+    </jump>
+  </branch>
+
+  <goodbye destinationname="end">
+    Thanks for talking to me. Goodbye.
+  </goodbye>
+</dialogtree>
