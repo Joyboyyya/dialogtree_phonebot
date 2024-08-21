@@ -6,6 +6,10 @@ import argparse
 import sys
 import requests
 import json
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 
@@ -131,7 +135,9 @@ from typing import Callable
 
 
 class Dialog:
-    def __init__(self,conversation:str, treefile:str, functions:dict[str, Callable], openai_key:str, org_id:str, model:str="llama3:70b", context={}):
+    def __init__(self,conversation:str, treefile:str, functions:dict[str, Callable], 
+                #  openai_key:str, org_id:str, 
+                 model:str="llama3:70b", context={}):
         self.parse(ET.parse(treefile).getroot())
         self.functions=functions
         # self.client = OpenAI(api_key=openai_key, organization=org_id)
@@ -139,8 +145,8 @@ class Dialog:
         self.conversation=conversation
         self.context = context
 
-        self.llama3_url = "https://rxinformatics-llm.ahc.umn.edu/api/chat"
-        self.llama3_headers = {
+        self.llm_url = os.getenv('LLM_URL')
+        self.llm_headers = {
             "Content-Type": "application/json"
         }
 
@@ -219,7 +225,7 @@ class Dialog:
         #      model=self.model,
         # )
         # return chat_completion.choices[0].message.content
-        llama3_payload = json.dumps({
+        llm_payload = json.dumps({
         "model": "llama3:70b",
         "Stream": False,
         "messages": [
@@ -229,11 +235,13 @@ class Dialog:
         "temperature": 0.1
         })
 
-        response = requests.post(self.llama3_url, headers=self.llama3_headers, data=llama3_payload)
+        response = requests.post(self.llm_url, headers=self.llm_headers, data=llm_payload)
 
         if response.status_code == 200:
             data = response.json()
         else:
             print("Sorry, the model is not available..")
+            data = {'messsage':{'content': 'Sorry, the model is not available..'}}
+            return
 
         return data['message']['content']

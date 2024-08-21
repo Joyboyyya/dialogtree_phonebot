@@ -2,7 +2,7 @@ import asyncio, os
 from .conversation_controller import ConversationController
 from dataclasses import dataclass
 from ..dialogtree.dialog import Dialog
-from ..config import org_id, openai_key 
+# from ..config import org_id, openai_key 
 from ..dialogtree.helper_functions import *
 
 call_dict = {}
@@ -83,7 +83,8 @@ class CallState:
     async def outbound_coro(self):
         dialog = Dialog(conversation=self, 
                         treefile=self.outbound_xml, 
-                        openai_key=openai_key, org_id=org_id, model="gpt-4", functions={'extract_zipcode': extract_zipcode, 
+                        # openai_key=openai_key, org_id=org_id,
+                        model="gpt-4", functions={'extract_zipcode': extract_zipcode, 
                                                        'extract_search_radius': extract_search_radius, 
                                                        'map_state': map_state,
                                                        'expanded_constraint_search': expanded_constraint_search,
@@ -110,7 +111,8 @@ class CallState:
     async def inbound_coro(self):
         dialog = Dialog(conversation=self, 
                         treefile=self.inbound_xml, 
-                        openai_key=openai_key, org_id=org_id, model="gpt-4", functions={'extract_zipcode': extract_zipcode, 
+                        # openai_key=openai_key, org_id=org_id,
+                        model="gpt-4", functions={'extract_zipcode': extract_zipcode, 
                                                        'extract_search_radius': extract_search_radius, 
                                                        'map_state': map_state,
                                                        'expanded_constraint_search': expanded_constraint_search,

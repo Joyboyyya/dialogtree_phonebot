@@ -11,3 +11,4 @@ tacotron_env
 *.pcm
 dialogtree_phonebot/healthmarshall/discharge_instructions
 dialogtree_phonebot/gateway/mulaw/target
+openai_creds.txt

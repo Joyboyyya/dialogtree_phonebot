@@ -24,6 +24,7 @@ states = {
     "Colorado": "CO",
     "Connecticut": "CT",
     "Delaware": "DE",
+    "District-Of-Columbia": "DC",
     "Florida": "FL",
     "Georgia": "GA",
     "Hawaii": "HI",
@@ -44,26 +45,26 @@ states = {
     "Montana": "MT",
     "Nebraska": "NE",
     "Nevada": "NV",
-    "New Hampshire": "NH",
-    "New Jersey": "NJ",
-    "New Mexico": "NM",
-    "New York": "NY",
-    "North Carolina": "NC",
-    "North Dakota": "ND",
+    "New-Hampshire": "NH",
+    "New-Jersey": "NJ",
+    "New-Mexico": "NM",
+    "New-York": "NY",
+    "North-Carolina": "NC",
+    "North-Dakota": "ND",
     "Ohio": "OH",
     "Oklahoma": "OK",
     "Oregon": "OR",
     "Pennsylvania": "PA",
-    "Rhode Island": "RI",
-    "South Carolina": "SC",
-    "South Dakota": "SD",
+    "Rhode-Island": "RI",
+    "South-Carolina": "SC",
+    "South-Dakota": "SD",
     "Tennessee": "TN",
     "Texas": "TX",
     "Utah": "UT",
     "Vermont": "VT",
     "Virginia": "VA",
     "Washington": "WA",
-    "West Virginia": "WV",
+    "West-Virginia": "WV",
     "Wisconsin": "WI",
     "Wyoming": "WY"
 }
@@ -76,6 +77,7 @@ neighbor_states = {
     'CA': ['OR', 'NV', 'AZ'],
     'CO': ['WY', 'NE', 'KS', 'OK', 'NM', 'AZ', 'UT'],
     'CT': ['NY', 'MA', 'RI'],
+    'DC': ['MD', 'VA'],
     'DE': ['MD', 'PA', 'NJ'],
     'FL': ['GA', 'AL'],
     'GA': ['NC', 'SC', 'FL', 'AL', 'TN'],
@@ -480,8 +482,31 @@ async def filter_hc_response(answer,context):
             
 
     
-async def post_to_transplant_center_search(answer, custom_values):
+async def post_to_transplant_center_search(answer, context):
     # Create the JSON payload
+    custom_values = {}
+    if context['language_choice'] == 'esp':
+        if (context['organ_choice'] == 'corazón'):
+            custom_values['organ_choice'] = 'heart'
+        if (context['organ_choice'] == 'riñón'):
+            custom_values['organ_choice'] = 'kidney'
+        if (context['organ_choice'] == 'hígado'):
+            custom_values['organ_choice'] = 'liver'
+        if (context['organ_choice'] == 'pulmón'):
+            custom_values['organ_choice'] = 'lung'
+        if (context['donor_type'] == 'vivo'):
+            custom_values['donor_type'] = 'living'
+        if (context['donor_type'] == 'fallecido'):
+            custom_values['donor_type'] = 'deceased'
+        if (context['donor_type'] == 'ambos'):
+            custom_values['donor_type'] = 'both'
+        custom_values['zipcode'] = context['zipcode']
+        custom_values['search_radius'] = context['search_radius']
+        custom_values['state'] = context['state']
+    else:
+        custom_values = context
+        
+
     payload = {
         "organ": custom_values["organ_choice"],
         "donorType": custom_values["donor_type"],
@@ -492,22 +517,8 @@ async def post_to_transplant_center_search(answer, custom_values):
     # Send the POST request
     response = requests.post(url, json=payload, headers=headers)
     custom_values["response_json"] = response.json()
-    # if custom_values['response_json'] == [] and custom_values['donorCount']:
-    #     print("Sorry, we currently don't have any centers matching your search criteria. Do you want to try considering other States/Distance in your search?")
-    #     custom_values['ask_path'] = True
-    
+     
     print(f'response : {response.json()}')
-
-    # if not custom_values['donorCount'] and custom_values['response_json'] != []:
-    #     # Print the response content
-    #     print(response.json())
-        
-    # if custom_values['response_json'] != []:
-    #     if custom_values['candidate_age']:
-            
-
-    # if custom_values['print_flag']:
-    #     print(response.json())
     
     return "1"
 
@@ -641,12 +652,8 @@ async def print_results(answer,context):
 
 async def get_donor_type(answer,context):
     print("Your choice is:", answer)
-    if answer=="living":
+    if answer in ["living", "deceased", "both", "vivo", "fallecido", "ambos"]:
       context["donor_type"] = answer
-    elif answer == "deceased":
-        context["donor_type"] = answer
-    elif answer == "both":
-        context["donor_type"] = answer
     else:
         return None
     
@@ -713,24 +720,30 @@ async def validate_user_age(answer, context):
     if answer.lower() == "other":
         return None
     age = int(answer)
-    if age >=1 and age<=150:
+    context['under_18'] = False
+    if age >=1 and age<18:
         context['candidate_age'] = age
+        context['under_18'] = True
+        return "under_18"
+    elif age >=18 and age<=150:
+        context['candidate_age'] = age
+        return "candidate_height"
     else:
         return None 
     
-    if age<18: 
-        print("Note: This website includes only data fo adult transplant candidates. All data shown will be for adults. Data for pediatric candidates can be found at www.srtr.org.")
-    if age>=65 and age<=69:
-        if context['organ_choice'] == 'kidney':
-            print('Note: Given long wait times of several years, it may become important for you to know that centers have different age criteria for candidates, especially for those close to age 70, that may impact your options.')
-        elif context['organ_choice'] == 'lung':
-            print('Note: Centers have different age criteria for candidates that may impact your options.')
-        else:
-            print('Note: Centers have different age criteria for candidates that may impact your options.')
-            return context['candidate_age']
-    if age >= 70:
-        print('Note: Centers have different age criteria for candidates that may impact your options.')
-    return context['candidate_age']
+    # if age<18: 
+    #     print("Note: This website includes only data fo adult transplant candidates. All data shown will be for adults. Data for pediatric candidates can be found at www.srtr.org.")
+    # if age>=65 and age<=69:
+    #     if context['organ_choice'] == 'kidney':
+    #         print('Note: Given long wait times of several years, it may become important for you to know that centers have different age criteria for candidates, especially for those close to age 70, that may impact your options.')
+    #     elif context['organ_choice'] == 'lung':
+    #         print('Note: Centers have different age criteria for candidates that may impact your options.')
+    #     else:
+    #         print('Note: Centers have different age criteria for candidates that may impact your options.')
+    #         return context['candidate_age']
+    # if age >= 70:
+    #     print('Note: Centers have different age criteria for candidates that may impact your options.')
+    # return context['candidate_age']
 
 async def validate_candidate_height(answer,context):
     if answer.lower() == 'other':
@@ -804,13 +817,13 @@ async def get_disease_cause(answer,context):
     return context['candidate_organ_disease_cause']
 
 async def get_is_multiorgan_candidate(answer,context):
-    if answer.lower() in ['yes', 'no', 'yes_liver_kidney', 'yes_spk', 'yes_other', 'notSure']:
+    if answer.lower() in ['yes', 'no', 'yes_liver_kidney', 'yes_spk', 'yes_other']:
       context['is_multiorgan_candidate'] = answer.lower()
       if answer.lower() == 'yes':
           print("Note: Multi-organ transplants are rare, contact potential transplant centers to find out if this an option.")
       if answer.lower() == 'yes_other' and context['organ_choice'] == 'liver':
           print("Note: Multi-organ transplants other than Liver-Kidney are rare, contact potential transplant centers to find out if this is an option.")
-    elif answer.lower() == 'notSure':
+    elif answer.lower() == 'alpha':
       context['is_multiorgan_candidate'] = 'notSure'
     else:
         return None
