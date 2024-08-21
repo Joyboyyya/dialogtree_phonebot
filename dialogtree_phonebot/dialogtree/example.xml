@@ -33,7 +33,7 @@
       if answer.lower() in ['en', 'es']:
         context['language_choice'] = answer
         if context['language_choice'] == 'en':
-          return 'organ'
+          return 'instruction'
         else:
           return 'organ_esp'
       else:
@@ -42,10 +42,14 @@
 </jump>
   </branch>
 
+  <state destinationname="instruction" nextdestination="organ">
+    I'll ask you a few questions to help refine our search. I'll highlight the relevant field on the page, but I'll input the answers myself. You don't need to enter any information outside of the chatbot.
+  </state>
+
   <branch destinationname="organ">
     <userquestion>
         Please tell me what organ you are looking for? 
-        1. Heart 2. Liver 3. Lung 4. Kidney
+        Heart Liver Lung Kidney
     </userquestion>
     <errorprompt>
         Explain to the user who just replied with this: 
