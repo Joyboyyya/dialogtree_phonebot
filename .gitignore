@@ -12,3 +12,4 @@ tacotron_env
 dialogtree_phonebot/healthmarshall/discharge_instructions
 dialogtree_phonebot/gateway/mulaw/target
 openai_creds.txt
+.dockerignore
